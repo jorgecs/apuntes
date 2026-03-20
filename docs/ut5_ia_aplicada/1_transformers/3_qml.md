@@ -1,5 +1,5 @@
 ---
-title: Quantum Machine Learning
+title: Nuevas tendencias
 sidebar_position: 3
 ---
 
@@ -8,9 +8,11 @@ import classicalml from "./img/classicalML.pdf";
 
 # Quantum Machine Learning (QML)
 
+Han aparecido nuevas ideas y soluciones de inteligencia artificial tras la aparición de los transformers, una de ellas es el Machine Learning Cuántico (QML). Es una idea revolucionaria que incluye capas de computación cuántica para el aprendizaje automático. 
+
 La idea de QML no es reemplazar el Machine Learning clásico, sino combinarlo con la computación cuántica.
 
-## 1. Computación clásica vs cuántica
+## Computación clásica vs cuántica
 
 <img src={quantumvsclassical} style={{ display: "block", margin: "auto" }} />
 
@@ -19,7 +21,7 @@ La idea de QML no es reemplazar el Machine Learning clásico, sino combinarlo co
 
 No significa que un ordenador cuántico sea mejor en todo, pero sí que puede abrir nuevas formas de representar y procesar información al poder explorar múltiples soluciones al mismo tiempo.
 
-## 2. Superposición (explicado fácil)
+## Superposición
 
 ![Alt Text](img/Quantum-Superposition_Final-sm.gif)
 
@@ -31,7 +33,7 @@ Forma intuitiva de verlo:
 
 Esto permite diseñar modelos que exploren representaciones más complejas con pocos qubits.
 
-## 3. Entrelazamiento
+## Entrelazamiento
 
 ![Alt Text](img/Particles_SpookyAction_Stars_2H.gif)
 
@@ -42,7 +44,21 @@ Dos qubits entrelazados quedan correlacionados de forma muy fuerte: al medir uno
 
 Por eso en QML suele ser una pieza clave cuando queremos mejorar capacidad de clasificación.
 
-## 4. Pipeline ML clásico vs pipeline QML
+## Medición
+
+En un circuito cuántico, el estado final antes de medir es determinista (si no hay ruido),  
+pero **el resultado de una medida individual** no lo es.
+
+- Una sola medida devuelve `0` o `1` al azar según sus probabilidades.
+- Si `P(1)=0.73`, una medida no da "0.73": da solo `0` o `1`.
+- Para estimar `P(1)` repetimos el circuito muchas veces (`shots`) y contamos frecuencias.
+- Por eso en QML no usamos una sola medida: usamos muchas y estimamos la probabilidad.
+
+Regla práctica:
+- pocos `shots` -> estimación ruidosa (más variación)
+- muchos `shots` -> estimación más estable (menor error de muestreo)
+
+## Pipeline ML clásico vs pipeline QML
 
 Mismo pipeline, diferente modelo en una parte concreta.
 
@@ -69,7 +85,7 @@ Es decir, QML es un enfoque híbrido: clásico + cuántico ([algoritmos variacio
 
 La QPU prepara los estados y la CPU actualiza los parámetros.
 
-## 5. Circuito como capas en Machine Learning
+## Circuito como capas en Machine Learning
 
 En ML clasico, una red hace algo asi:
 
@@ -91,7 +107,7 @@ Forma corta para explicarlo en clase:
 
 En algunos problemas, QML puede necesitar menos parámetros entrenables (`theta`) que un modelo clásico, porque parte de su expresividad viene de la superposición y el entrelazamiento. Aun así, no es una ventaja garantizada en todos los casos: depende de la tarea, del circuito y del hardware disponible.
 
-## 6. ¿Para qué sirve hoy y por qué conocerlo?
+## ¿Para qué sirve hoy y por qué conocerlo?
 
 Estado actual:
 - Es una tecnología emergente.
@@ -102,3 +118,9 @@ Por qué tiene sentido aprenderlo ahora:
 - Introduce una forma distinta de pensar modelos y representaciones.
 - Te prepara para futuras herramientas y perfiles profesionales.
 - Ya se investiga en clasificación, optimización, química computacional y finanzas.
+
+## Ejercicios prácticos
+
+[![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jorgecs/apuntes/blob/main/docs/ut5_ia_aplicada/1_transformers/notebooks/QML.ipynb)
+
+**IMPORTANTE**: Guarda una copia en Drive antes de empezar (Archivo → Guardar una copia)
