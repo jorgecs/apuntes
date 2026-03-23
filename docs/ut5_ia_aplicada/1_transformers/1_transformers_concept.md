@@ -74,7 +74,7 @@ La principal diferencia de los transformers es **como obtienen el contexto**: co
 
 ## Ejercicios prácticos
 
-[![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jorgecs/apuntes/blob/main/docs/ut5_ia_aplicada/1_transformers/notebooks/Transformer_Tokenizacion.ipynb)
+[![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jorgecs/apuntes/blob/main/docs/ut5_ia_aplicada/1_transformers/notebooks/Transformer.ipynb)
 
 **IMPORTANTE**: Guarda una copia en Drive antes de empezar (Archivo → Guardar una copia)
 
