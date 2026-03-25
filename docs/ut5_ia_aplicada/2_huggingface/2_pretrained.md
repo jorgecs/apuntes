@@ -168,12 +168,8 @@ Muchos modelos en Hugging Face ya vienen cuantizados, listos para usar:
 | Modelo grande en GPU pequeña | `load_in_8bit=True` o `load_in_4bit=True` |
 | Modelo muy grande en CPU | Buscar versiones GGUF cuantizadas |
 
-## Próximos pasos
+## Ejercicios prácticos
 
-Con lo que habéis aprendido, podéis:
+[![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jorgecs/apuntes/blob/main/docs/ut5_ia_aplicada/1_transformers/notebooks/Pretrained.ipynb)
 
-1. **Descargar modelos** y trabajar sin conexión
-2. **Optimizar memoria** con cuantización
-3. **Usar GPU** eficientemente
-
-En la siguiente sesión veremos **RAG** para dar conocimiento externo a los modelos.
+**IMPORTANTE**: Guarda una copia en Drive antes de empezar (Archivo → Guardar una copia)

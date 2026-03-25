@@ -100,7 +100,7 @@ La idea es:
 - `RY(theta)`: parametro entrenable del modelo (como un peso en ML clasico).
 - `measure`: convierte el estado cuantico en una salida observable (por ejemplo, probabilidad de clase 1).
 
-Forma corta para explicarlo en clase:
+**Variables a usar**:
 - `x1, x2` son los datos.
 - `theta` es lo que aprende el modelo durante el entrenamiento.
 - La prediccion final depende de como queden combinados `x1, x2` y `theta` tras las rotaciones y la medida.
