@@ -3,6 +3,10 @@ title: HuggingFace, Model Hub y Pipelines
 sidebar_position: 1
 ---
 
+import task from "./img/task.png";
+import lang from "./img/lang.png";
+import filter from "./img/filter.png";
+
 # Hugging Face
 
 ## ¿Qué es Hugging Face?
@@ -58,20 +62,20 @@ Si necesitas un modelo para **análisis de sentimiento en español**:
 
 Los modelos más descargados suelen ser los más probados por la comunidad.
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 30px 0;">
-  <div style="text-align: center;">
+<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", margin: "30px 0" }}>
+  <div style={{ textAlign: "center" }}>
     <strong>Paso 2: Filtrar por tarea (Task)</strong>
-    <img src="img/task.png" alt="Filtrar por tarea" style="width: 100%;">
+    <img src={task} alt="Filtrar por tarea" style={{ width: "100%" }} />
   </div>
-  <div style="text-align: center;">
+  <div style={{ textAlign: "center" }}>
     <strong>Paso 3: Filtrar por idioma (Language)</strong>
-    <img src="img/lang.png" alt="Filtrar por idioma" style="width: 100%;">
+    <img src={lang} alt="Filtrar por idioma" style={{ width: "100%" }} />
   </div>
 </div>
 
-<div style="text-align: center; margin: 30px 0;">
-  <strong>Paso 4: Ver resultados filtrados</strong><br>
-  <img src="img/filter.png" alt="Resultados filtrados" style="width: 100%;">
+<div style={{ textAlign: "center", margin: "30px 0" }}>
+  <strong>Paso 4: Ver resultados filtrados</strong><br />
+  <img src={filter} alt="Resultados filtrados" style={{ width: "100%" }} />
 </div>
 
 ## Pipelines
