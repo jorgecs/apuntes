@@ -100,6 +100,8 @@ La idea es:
 - `RY(theta)`: parametro entrenable del modelo (como un peso en ML clasico).
 - `measure`: convierte el estado cuantico en una salida observable (por ejemplo, probabilidad de clase 1).
 
+![image](img/circuito_qml.png)
+
 **Variables a usar**:
 - `x1, x2` son los datos.
 - `theta` es lo que aprende el modelo durante el entrenamiento.
