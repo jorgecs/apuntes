@@ -81,7 +81,7 @@ Conclusión:
 - No cambia todo el flujo.
 - Lo que cambia es el modelo: el clasificador pasa a ser un circuito cuántico parametrizado.
 
-Es decir, QML es un enfoque híbrido: clásico + cuántico ([algoritmos variacionales](https://matheuscammarosanohidalgo.medium.com/a-very-simple-variational-quantum-classifier-vqc-64e8ec26589d)).
+Es decir, QML es un enfoque híbrido: clásico + cuántico ([algoritmos variacionales/VQC](https://matheuscammarosanohidalgo.medium.com/a-very-simple-variational-quantum-classifier-vqc-64e8ec26589d)).
 
 La QPU prepara los estados y la CPU actualiza los parámetros.
 
