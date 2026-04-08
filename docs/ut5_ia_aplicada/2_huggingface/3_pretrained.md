@@ -1,6 +1,6 @@
 ---
 title: Gestión de modelos preentrenados
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 # Gestión de modelos preentrenados
