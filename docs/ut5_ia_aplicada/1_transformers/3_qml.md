@@ -5,12 +5,15 @@ sidebar_position: 3
 
 import quantumvsclassical from "./img/ZQktuz.gif";
 import classicalml from "./img/classicalML.pdf";
+import schrodinger from "./img/gato.gif";
 
 # Quantum Machine Learning (QML)
 
 Han aparecido nuevas ideas y soluciones de inteligencia artificial tras la aparición de los transformers, una de ellas es el Machine Learning Cuántico (QML). Es una idea revolucionaria que incluye capas de computación cuántica para el aprendizaje automático. 
 
 La idea de QML no es reemplazar el Machine Learning clásico, sino combinarlo con la computación cuántica.
+
+<img src={schrodinger} style={{ display: "block", margin: "auto" }} />
 
 ## Computación clásica vs cuántica
 
