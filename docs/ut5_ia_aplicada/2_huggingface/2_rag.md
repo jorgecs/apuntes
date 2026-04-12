@@ -11,7 +11,7 @@ Los modelos de generación de texto tienen limitaciones importantes:
 
 | Problema | Ejemplo |
 |----------|---------|
-| **Conocimiento desactualizado** | "¿Quién ganó el Mundial 2026?" → No lo sabe |
+| **Conocimiento desactualizado** | "¿Cuándo llegó la Artemis II a la Tierra?" → No lo sabe |
 | **No conocen datos privados** | "¿Qué dice el manual de mi empresa?" → No lo sabe |
 | **Alucinaciones** | Inventa respuestas cuando no sabe |
 | **Sin fuentes** | No puede citar de dónde sacó la información |
@@ -38,9 +38,8 @@ Pregunta del usuario
    Prompt enriquecido → Modelo → Respuesta
 ```
 
-:::info RAG es una arquitectura, no una propiedad del modelo
+RAG es una arquitectura, no una propiedad del modelo
 RAG funciona con **cualquier modelo de generación de texto**: modelos locales de Hugging Face (GPT-2, LLaMA, Mistral) o APIs en la nube. En esta sesión veremos RAG con **modelos locales**. En el bloque de LLM veremos cómo usar RAG con APIs cloud.
-:::
 
 ## RAG vs Fine-tuning: ¿Por qué RAG domina en empresas?
 
@@ -88,7 +87,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=500,      # Caracteres por chunk
-    chunk_overlap=50     # Solapamiento entre chunks
+    chunk_overlap=50,     # Solapamiento entre chunks
+    separators=["\n\n", "\n", ". ", " ", ""] # Orden de preferencia para dividir
 )
 
 chunks = splitter.split_text(documento_largo)
@@ -119,7 +119,7 @@ print(embedding.shape)  # (384,)
 
 ### 4. Vector Store (base de datos vectorial)
 
-Almacena embeddings y permite buscar por similitud.
+Almacena embeddings y permite buscar por similitud. Normalmente ya realiza la creación de los propios embeddings
 
 ```python
 import chromadb
@@ -131,14 +131,69 @@ collection = client.create_collection("mis_docs")
 # Guardar chunks
 collection.add(
     documents=["chunk 1", "chunk 2", "chunk 3"],
-    ids=["id1", "id2", "id3"]
+    ids=["id1", "id2", "id3"],
+    metadatas=[{"tema": "doc1"}, {"tema": "doc2"}, {"tema": "doc3"}]
 )
 
 # Buscar similares a una pregunta
 results = collection.query(
     query_texts=["mi pregunta"],
-    n_results=3  # Top 3 más relevantes
+    n_results=3,  # Top 3 más relevantes
+    where={"tema": "doc1"} # Se puede usar where con un diccionario para filtrar
 )
+```
+
+Para que funcione bien en español, hay que especificar un modelo de embeddings para no utilizar el que usa por defecto ChromaDB
+```python
+import chromadb
+from chromadb.utils import embedding_functions
+
+# Crear base de datos
+client = chromadb.Client()
+
+# Crear modelo de embeddings multilingue
+embedding_es = embedding_functions.SentenceTransformerEmbeddingFunction(
+    model_name="paraphrase-multilingual-MiniLM-L12-v2"
+)
+
+# Crear colección con el nuevo modelo
+coleccion = client.create_collection(
+    name="mis_docs",
+    embedding_function=embedding_es,
+    metadata={"description": "Metadata de la colección"}
+)
+
+collection.add(
+    documents=["chunk 1", "chunk 2", "chunk 3"],
+    ids=["id1", "id2", "id3"]
+    metadatas=[{"tema": "doc1"}, {"tema": "doc2"}, {"tema": "doc3"}]
+)
+
+# Buscar similares a una pregunta
+results = collection.query(
+    query_texts=["mi pregunta"],
+    n_results=3,  # Top 3 más relevantes
+    where={"tema": "doc1"}
+)
+```
+
+```python
+results = collection.query(query_texts=["pregunta"], n_results=3)
+
+#Esto devuelve un diccionario de este tipo, en el que se almacenan los datos (puede aceptar múltiples preguntas en la misma query)
+
+{
+  "documents": [[...]],
+  "metadatas": [[...]],
+  "ids": [[...]],
+  "distances": [[...]]
+}
+
+#Para recuperar algo en concreto, como solamente haremos una única pregunta por query, hay que usar [0]
+#Por ejemplo, para obtener los chunks, metadatos y distancias de una query
+chunks = results["documents"][0]
+metadatas = results["metadatas"][0]
+distances = results["distances"][0]
 ```
 
 **Opciones de vector stores:**
@@ -151,25 +206,24 @@ results = collection.query(
 
 ### 5. El prompt aumentado
 
-Combinamos la pregunta con el contexto recuperado:
+El siguiente paso es crear un prompt donde combinamos la pregunta con el contexto recuperado:
 
 ```python
-contexto = "Python fue creado por Guido van Rossum en 1991..."
-
 prompt = f"""Usa ÚNICAMENTE el siguiente contexto para responder.
 Si no encuentras la respuesta en el contexto, di "No tengo esa información".
 
 CONTEXTO:
 {contexto}
 
-PREGUNTA: ¿Quién creó Python?
+PREGUNTA: 
+{pregunta}
 
 RESPUESTA:"""
 ```
 
 ### 6. Generación (modelo local)
 
-El modelo recibe el prompt enriquecido y genera la respuesta. Usamos un pipeline de Hugging Face:
+El modelo elegido recibe el prompt enriquecido y genera la respuesta. Usamos un pipeline de Hugging Face:
 
 ```python
 from transformers import pipeline
@@ -188,86 +242,9 @@ generator = pipeline(
 )
 ```
 
-## Ejemplo completo: RAG con modelos locales
-
-```python
-from sentence_transformers import SentenceTransformer
-import chromadb
-from transformers import pipeline
-
-# ============ FASE 1: INDEXACIÓN (una vez) ============
-
-# Documentos de ejemplo (tu base de conocimiento)
-documentos = [
-    "Python fue creado por Guido van Rossum en 1991.",
-    "Python es un lenguaje interpretado de alto nivel.",
-    "JavaScript fue creado por Brendan Eich en 1995.",
-    "JavaScript se usa principalmente en navegadores web.",
-    "RAG significa Retrieval-Augmented Generation.",
-]
-
-# Crear vector store y añadir documentos
-client = chromadb.Client()
-collection = client.create_collection("mi_conocimiento")
-
-collection.add(
-    documents=documentos,
-    ids=[f"doc_{i}" for i in range(len(documentos))]
-)
-
-print(f"✅ Indexados {len(documentos)} documentos")
-
-# ============ FASE 2: MODELO DE GENERACIÓN ============
-
-# Cargar modelo local de Hugging Face
-generator = pipeline(
-    "text-generation",
-    model="gpt2",
-    max_new_tokens=50
-)
-
-# ============ FASE 3: FUNCIÓN RAG ============
-
-def rag_responder(pregunta, n_chunks=2):
-    # 1. Buscar chunks relevantes
-    results = collection.query(
-        query_texts=[pregunta],
-        n_results=n_chunks
-    )
-    chunks = results['documents'][0]
-
-    # 2. Construir prompt con contexto
-    contexto = "\n".join(chunks)
-
-    prompt = f"""Basándote SOLO en el siguiente contexto, responde la pregunta.
-
-Contexto:
-{contexto}
-
-Pregunta: {pregunta}
-
-Respuesta:"""
-
-    # 3. Generar respuesta con modelo local
-    respuesta = generator(prompt)[0]['generated_text']
-
-    # 4. Mostrar trazabilidad (de dónde vino la info)
-    print(f"📚 Chunks usados:")
-    for chunk in chunks:
-        print(f"   - {chunk}")
-
-    return respuesta
-
-# ============ USAR ============
-
-pregunta = "¿Quién creó Python?"
-respuesta = rag_responder(pregunta)
-print(f"\n🤖 Respuesta:\n{respuesta}")
-```
-
 ## RAG con LangChain y Hugging Face
 
-LangChain simplifica la implementación y se integra perfectamente con modelos de Hugging Face:
+LangChain es un framework que simplifica la implementación y se integra perfectamente con modelos de Hugging Face:
 
 ```python
 from langchain_community.document_loaders import TextLoader
@@ -278,33 +255,33 @@ from langchain.chains import RetrievalQA
 from langchain_community.llms import HuggingFacePipeline
 from transformers import pipeline
 
-# 1. Cargar documento
+#1. Cargar documento
 loader = TextLoader("mi_documento.txt")
 docs = loader.load()
 
-# 2. Dividir en chunks
+#2. Dividir en chunks
 splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
 chunks = splitter.split_documents(docs)
 
-# 3. Crear embeddings y vector store (todo local)
+#3. Crear embeddings y vector store (todo local)
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 vectorstore = Chroma.from_documents(chunks, embeddings)
 
-# 4. Crear retriever
+#4. Crear retriever
 retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-# 5. Crear modelo local con Hugging Face
+#5. Crear modelo local con Hugging Face
 pipe = pipeline("text-generation", model="gpt2", max_new_tokens=100)
 llm = HuggingFacePipeline(pipeline=pipe)
 
-# 6. Crear cadena RAG
+#6. Crear cadena RAG
 qa = RetrievalQA.from_chain_type(
     llm=llm,
     chain_type="stuff",
     retriever=retriever
 )
 
-# 7. Preguntar
+#7. Preguntar
 respuesta = qa.run("¿De qué trata el documento?")
 print(respuesta)
 ```
@@ -319,10 +296,6 @@ print(respuesta)
 | `google/flan-t5-base` | 250M | ~1GB | Buena | Rápida |
 | `google/flan-t5-large` | 780M | ~3GB | Muy buena | Media |
 | `mistralai/Mistral-7B-v0.1` | 7B | ~14GB | Excelente | Lenta |
-
-:::tip Para esta práctica
-Usa `gpt2` o `google/flan-t5-base` para prototipos rápidos. Si tienes GPU con más de 8GB VRAM, prueba modelos más grandes.
-:::
 
 ## Resumen visual
 
