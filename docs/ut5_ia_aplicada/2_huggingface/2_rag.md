@@ -39,7 +39,7 @@ Pregunta del usuario
 ```
 
 RAG es una arquitectura, no una propiedad del modelo
-RAG funciona con **cualquier modelo de generación de texto**: modelos locales de Hugging Face (GPT-2, LLaMA, Mistral) o APIs en la nube. En esta sesión veremos RAG con **modelos locales**. En el bloque de LLM veremos cómo usar RAG con APIs cloud.
+RAG funciona con **cualquier modelo de generación de texto**: modelos locales de Hugging Face (GPT-2, LLaMA, Mistral) o APIs en la nube. En esta sesión veremos RAG con **modelos locales**. 
 
 ## RAG vs Fine-tuning: ¿Por qué RAG domina en empresas?
 
@@ -83,7 +83,7 @@ Los documentos se dividen en "chunks" porque:
 - Chunks pequeños = búsqueda más precisa
 
 ```python
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 splitter = RecursiveCharacterTextSplitter(
     chunk_size=500,      # Caracteres por chunk
@@ -157,7 +157,7 @@ embedding_es = embedding_functions.SentenceTransformerEmbeddingFunction(
 )
 
 # Crear colección con el nuevo modelo
-coleccion = client.create_collection(
+colection = client.create_collection(
     name="mis_docs",
     embedding_function=embedding_es,
     metadata={"description": "Metadata de la colección"}
@@ -165,7 +165,7 @@ coleccion = client.create_collection(
 
 collection.add(
     documents=["chunk 1", "chunk 2", "chunk 3"],
-    ids=["id1", "id2", "id3"]
+    ids=["id1", "id2", "id3"],
     metadatas=[{"tema": "doc1"}, {"tema": "doc2"}, {"tema": "doc3"}]
 )
 
@@ -248,10 +248,10 @@ LangChain es un framework que simplifica la implementación y se integra perfect
 
 ```python
 from langchain_community.document_loaders import TextLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain.chains import RetrievalQA
+from langchain_classic.chains import RetrievalQA
 from langchain_community.llms import HuggingFacePipeline
 from transformers import pipeline
 
