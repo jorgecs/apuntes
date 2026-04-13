@@ -37,7 +37,7 @@ Extraemos el texto relevante de nuestros archivos o bases de datos y lo pegamos 
 
 En un sistema RAG corporativo complejo (con miles de PDFs u hojas de cálculo), se utilizan Bases de Datos Vectoriales para buscar matemáticamente solo los 3 o 4 párrafos más relevantes a la pregunta, para no saturar al LLM.
 
-Sin embargo, gracias a modelos modernos como **Gemini 1.5**, tenemos ventanas de contexto de locura (hasta 1 o 2 millones de *tokens*, que equivalen a libros enteros). Aplicaremos un abordaje supereficiente llamado **"RAG Simplificado"** (o *Context Stuffing*):
+Sin embargo, gracias a modelos modernos como **Gemini 3.0**, tenemos ventanas de contexto enormes (hasta 1 o 2 millones de *tokens*, que equivalen a libros enteros). Aplicaremos un abordaje supereficiente llamado **"RAG Simplificado"** (o *Context Stuffing*):
 En lugar de trocear archivos y usar bases de datos vectoriales, **leeremos el archivo de texto entero mediante Python y lo inyectaremos de golpe en el prompt.**
 
 ### La anatomía de un Prompt con Contexto
@@ -63,6 +63,6 @@ En la próxima práctica, escribiremos un script en Python que lea un archivo lo
 
 ## Ejercicios prácticos
 
-[![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jorgecs/apuntes/blob/main/docs/ut5_ia_aplicada/23_llm/notebooks/Context.ipynb)
+[![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jorgecs/apuntes/blob/main/docs/ut5_ia_aplicada/3_llm/notebooks/Context.ipynb)
 
 **IMPORTANTE**: Guarda una copia en Drive antes de empezar (Archivo → Guardar una copia)

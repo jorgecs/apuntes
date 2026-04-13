@@ -161,6 +161,6 @@ El modelo SÍ sabe que está inventando (en teoría), pero está obligado a gene
 
 ## Ejercicios prácticos
 
-[![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jorgecs/apuntes/blob/main/docs/ut5_ia_aplicada/23_llm/notebooks/Llm_basics.ipynb)
+[![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jorgecs/apuntes/blob/main/docs/ut5_ia_aplicada/3_llm/notebooks/Llm_basics.ipynb)
 
 **IMPORTANTE**: Guarda una copia en Drive antes de empezar (Archivo → Guardar una copia)

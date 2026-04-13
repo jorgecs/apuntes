@@ -34,7 +34,7 @@ tokenizer = AutoTokenizer.from_pretrained("./mi_modelo_local")
 model = AutoModelForCausalLM.from_pretrained("./mi_modelo_local")
 
 # O usar en un pipeline
-generator = pipeline("text-generation", model="./mi_modelo_local")
+generator = pipeline("text-generation", model=model, tokenizer=tokenizer)
 ```
 
 ### Estructura de archivos
@@ -112,6 +112,22 @@ Normalmente los pesos de un modelo son números de 32 bits (float32). La cuantiz
 | float16 | 16 | ~14 GB | ~99% |
 | int8 | 8 | ~7 GB | ~97% |
 | int4 | 4 | ~3.5 GB | ~93% |
+
+### Cargar modelo en 16 bits
+
+```python
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import torch
+
+model_id = "google/flan-t5-small"
+
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+model = AutoModelForSeq2SeqLM.from_pretrained(
+    model_id,
+    torch_dtype=torch.float16,
+    device_map="auto"
+)
+```
 
 ### Cargar modelo en 8 bits
 
