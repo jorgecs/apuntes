@@ -59,7 +59,19 @@ REGLAS:
 Pregunta del usuario: [Variable de input del usuario]
 ```
 
-En la próxima práctica, escribiremos un script en Python que lea un archivo local de forma dinámica, ensamble este "Super-prompt" y se lo envíe a Gemini para hacerle preguntas precisas sobre su contenido.
+## Elegir el formato de salida:
+
+Cuando usamos un LLM dentro de una app real, no siempre queremos una respuesta "bonita" para leer, sino una salida que otro sistema pueda consumir de forma automática y fiable. Ahí es donde entra JSON.
+
+JSON (JavaScript Object Notation) es un formato de datos estructurado, ligero y estándar. En la práctica, permite representar información como pares clave-valor (objetos) o como listas (arrays), de forma que Python, JavaScript, APIs y bases de datos puedan procesarla directamente sin tener que "interpretar" texto libre.
+
+Controlar el formato de salida del LLM tiene ventajas muy importantes:
+- **Automatización robusta:** Si la respuesta llega siempre con el mismo esquema, tu código puede parsearla y seguir el flujo sin lógica frágil.
+- **Menos errores en producción:** Evitas depender de frases naturales ambiguas o cambiantes.
+- **Integración sencilla con frontend y backend:** Un JSON se puede enviar tal cual por una API REST y pintar en interfaz sin transformaciones manuales.
+- **Validación y testing:** Puedes comprobar fácilmente si faltan campos, si los tipos son correctos o si el modelo se ha salido del formato esperado.
+
+En otras palabras: en un prototipo puede bastar con texto natural, pero en una aplicación profesional suele ser mejor pedir al LLM una salida estructurada y estable. Esto convierte al modelo en una pieza fiable de un pipeline, no solo en un chatbot conversacional.
 
 ## Ejercicios prácticos
 
