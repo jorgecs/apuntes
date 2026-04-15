@@ -28,95 +28,383 @@ Vamos a crear un servidor backend que reciba un **contexto** (ej. un texto largo
 Asegúrate de preparar tu entorno de terminal instalando lo necesario:
 
 ```bash
-pip install fastapi uvicorn google-generativeai pydantic
+pip install fastapi "fastapi[standard]" google-genai pydantic python-dotenv
 ```
 
-### 2. Código del Servidor (`main.py`)
+### 2.1 Código simple del Servidor (`main.py`)
 
-Crea un archivo local llamado `main.py` y añade la siguiente estructura básica. Observa detenidamente cómo usamos las clases *BaseModel* de Pydantic para tipar de forma estricta qué es lo que esperamos recibir:
+Crea un archivo local llamado `main.py` y añade la siguiente estructura básica. 
+
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+```
+
+### 2.2 Ejecutar tu API
+
+```bash
+fastapi dev
+```
+
+Si entramos en `localhost:8000` veremos la respuesta de la API
+
+### 3.1 Configurar archivo `.env` y probar un endpoint simple
+
+Antes de meter RAG y lógica compleja, conviene validar que la API funciona con un endpoint mínimo y una llamada real a Gemini, leyendo la API Key desde un fichero local.
+
+Crea un archivo llamado `.env` en la raíz del proyecto:
+
+```bash
+GEMINI_API_KEY=TU_API_KEY
+```
+
+Modifica `main.py` con un endpoint de prueba:
+
+```python
+from fastapi import FastAPI, HTTPException
+from google import genai
+from dotenv import load_dotenv
+import os
+
+MODEL_ID = "models/gemini-2.5-flash"
+
+# Carga variables desde .env
+load_dotenv()
+
+api_key = os.environ.get("GEMINI_API_KEY")
+if not api_key:
+    raise RuntimeError("Falta GEMINI_API_KEY en el archivo .env")
+
+client = genai.Client(api_key=api_key)
+app = FastAPI(title="API LLM - Base", version="1.0.0")
+
+@app.post("/api/prompt")
+def prompt_simple(request):
+    try:
+        response = client.models.generate_content(
+            model=MODEL_ID,
+            contents=request,
+        )
+        return response.text
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+```
+
+Ejecuta y prueba:
+
+```bash
+fastapi dev
+```
+
+En `localhost:8000/docs`, prueba `POST /api/prompt` con:
+
+```json
+"Dame una definición corta de FastAPI"
+```
+
+Si esto funciona, ya tienes verificado SDK, lectura de API key desde `.env` y endpoint.
+
+### 3.2 Añadir RAG + chat con documento (contexto persistente)
+
+Ahora damos el salto, en vez de enviar prompts sueltos, creamos un chat con `system_instruction` y le inyectamos un documento local como contexto estable.
+
+Primero creamos un fichero `politicas_empresa.md` con el siguiente contenido:
+
+```bash
+# Políticas Internas EmpresaFalsa123.
+
+## Trabajo Remoto
+- Los empleados pueden trabajar desde casa un máximo de 3 días a la semana.
+- Es obligatorio estar online en Slack entre las 10:00 y las 14:00.
+
+## Vacaciones 2026
+- Todos tienen 25 días laborables de vacaciones pagadas.
+- Durante el mes de Agosto no se pueden tomar más de 2 semanas consecutivas.
+
+## Comidas y Oficina
+- El menú de la cafetería cambia cada semana. El menú del viernes es siempre "Día de Pizza".
+- La oficina cierra a las 20:00 y requiere tarjeta magnética para el acceso de fin de semana.
+```
+
+El código para leer el fichero y utilizarlo en el chat quedaría de la siguiente forma:
 
 ```python
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import google.generativeai as genai
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv
 import os
 
-# 1. Configuración de Gemini
-# En producción, usa variables de entorno (NUNCA expongas tu API Key subiéndola a GitHub)
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "TU_API_KEY_ACÁ")
-genai.configure(api_key=GOOGLE_API_KEY)
+MODEL_ID = "models/gemini-2.5-flash"
 
-# Instanciamos el modelo base
-modelo_base = genai.GenerativeModel('gemini-1.5-flash')
+# Carga variables desde .env
+load_dotenv()
 
-# 2. Inicialización de la app API
-app = FastAPI(title="Mi API con RAG y Gemini", version="1.0.0")
+api_key = os.environ.get("GEMINI_API_KEY")
+if not api_key:
+    raise RuntimeError("Falta GEMINI_API_KEY en el archivo .env")
 
-# 3. Definir la estructura de datos esperada desde el cliente Frontend (Pydantic)
-class RAGRequest(BaseModel):
-    contexto: str
+client = genai.Client(api_key=api_key)
+app = FastAPI(title="API LLM con RAG", version="1.1.0")
+
+# Leemos el documento local (simulando la extracción/RAG)
+with open("politicas_empresa.md", "r", encoding="utf-8") as f:
+    documento = f.read()
+
+# Definimos reglas e inyectamos el documento como contexto del chat
+instrucciones_sistema = f"""
+Eres el asistente virtual de RRHH de EmpresaFalsa123.
+Responde de forma concisa y amigable basándote EXCLUSIVAMENTE en el siguiente documento.
+Si el usuario pregunta por algo que no aparezca en las políticas, no inventes.
+
+--- INICIO DEL DOCUMENTO OFICIAL ---
+{documento}
+--- FIN DEL DOCUMENTO OFICIAL ---
+"""
+
+config = types.GenerateContentConfig(
+    temperature=0,
+    system_instruction=instrucciones_sistema,
+)
+
+chat_model = client.chats.create(
+    model=MODEL_ID,
+    config=config,
+)
+
+# Vamos a usar Pydantic para gestionar los tipos de las entradas
+class ChatRequest(BaseModel):
     pregunta: str
 
-class RAGResponse(BaseModel):
+
+class ChatResponse(BaseModel):
     respuesta: str
 
-# 4. Crear el Endpoint de tipo POST
-@app.post("/api/chat", response_model=RAGResponse)
-async def procesar_pregunta(request: RAGRequest):
+
+@app.post("/api/chat", response_model=ChatResponse)
+def chat_con_contexto(request: ChatRequest):
     try:
-        # Ensamblamos el Super-Prompt que vimos en la teoría inyectando el body del JSON
-        prompt_gigante = f"""
-        Eres un asistente experto. Utiliza ÚNICAMENTE la siguiente información para responder a la pregunta del usuario. 
-        Si la respuesta no se encuentra en el texto, debes responder "Lo siento, no dispongo de esa información." y no debes inventar nada.
-        
-        --- INICIO DEL CONTEXTO ---
-        {request.contexto}
-        --- FIN DEL CONTEXTO ---
-        
-        Pregunta del usuario: {request.pregunta}
-        """
-        
-        # Llamar a Gemini. 
-        # NOTA PRO: En web (FastAPI) usamos 'await generate_content_async' 
-        # para no bloquear ni congelar a otros usuarios esperando la respuesta.
-        response = await modelo_base.generate_content_async(prompt_gigante)
-        
-        # Devolver el objeto de respuesta al cliente web/móvil
-        return RAGResponse(respuesta=response.text)
-        
+        respuesta = chat_model.send_message(request.pregunta)
+        return ChatResponse(respuesta=respuesta.text)
     except Exception as e:
-        # Manejo de errores básicos (ej. API Key inválida, internet caído)
         raise HTTPException(status_code=500, detail=str(e))
 ```
 
-### 3. Ejecutar y Probar tu API
-
-Para arrancar el servidor web, abre tu terminal en la misma carpeta donde salvaste el `main.py` y ejecuta el servidor local de desarrollo `uvicorn`:
-
-```bash
-uvicorn main:app --reload
-```
-*(El subfijo `--reload` le indica a uvicorn que debe reiniciar el servidor automáticamente cada vez que pulses "Guardar" en tu código, facilitando el desarrollo).*
-
-**Para probar el endpoint interactivo:**
-1. Abre tu navegador web favorito y ve a `http://127.0.0.1:8000/docs`
-2. Verás la interfaz gráfica verde y blanca autogenerada por Swagger. Busca y despliega tu ruta `POST /api/chat`.
-3. Haz clic en el botón blanco **"Try it out"** (situado arriba a la derecha).
-4. En el campo "Request body", escribe un JSON de prueba como este para someter al sistema a un test:
+Prueba rápida en Swagger (`POST /api/chat`):
 
 ```json
 {
-  "contexto": "La empresa cierra todos los fines de semana de agosto. Las vacaciones de verano se piden al departamento de RRHH con al menos un mes de antelación estricta.",
-  "pregunta": "¿A quién debo pedirle información sobre el stock de folios?"
+  "pregunta": "¿Cuántos días de teletrabajo máximo permite la empresa?"
 }
 ```
 
-5. Haz clic en el botón azul **"Execute"**. Verás cómo el backend empaqueta el contenido que has escrito por pantalla, se lo manda a la IA de Google y en unos segundos la caja inferior de "Server response" te contestará con el HTTP Status 200 y el cuerpo:
+Importante:
+
+1. Aquí el "RAG" está simplificado: no hay vector DB, pero sí inyección de contexto documental real.
+2. El chat mantiene historial en memoria del servidor, por eso puede responder repreguntas.
+3. En producción multiusuario, se separan chats por sesión/usuario (no un único `chat_model` global).
+
+### 3.3 Simulando chats por usuario
+Si usamos la versión anterior y probamos en dos pestañas diferentes, te responderá teniendo en cuenta lo que se le ha dicho. Esto NO es lo ideal, vamos a hacer un cambio para que sea `stateless` (el frontend envía el historial y el backend lo recibe)
+
+```python
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from google import genai
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    raise RuntimeError("Falta GEMINI_API_KEY en .env")
+
+client = genai.Client(api_key=api_key)
+MODEL_ID = "models/gemini-2.5-flash"
+app = FastAPI()
+
+with open("politicas_empresa.md", "r", encoding="utf-8") as f:
+    documento = f.read()
+
+class ChatRequest(BaseModel):
+    pregunta: str
+    historial: list[str] = []   # Ej: ["USER: ...", "ASSISTANT: ..."]
+
+class ChatResponse(BaseModel):
+    respuesta: str    
+
+@app.post("/api/chat")
+def chat_stateless(req: ChatRequest):
+    try:
+        historial_txt = "\n".join(req.historial[-6:])  # solo últimas preguntas
+
+        prompt = f"""
+Responde SOLO con este documento:
+{documento}
+
+Historial:
+{historial_txt}
+
+Pregunta actual:
+{req.pregunta}
+"""
+
+        resp = client.models.generate_content( # Ya no usamos un chat
+            model=MODEL_ID,
+            contents=prompt
+        )
+        return {"respuesta": resp.text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+```
+
+Ejemplo de request desde frontend:
 
 ```json
+"historial": [
+  "USER: ¿Cuántos días de vacaciones hay?",
+  "ASSISTANT: Hay 25 días laborables."
+]
+```
+
+O cambiar `ChatRequest` para permitir versiones más limpias como:
+```json
 {
-  "respuesta": "Lo siento, no dispongo de esa información."
+  "pregunta": "¿Y en agosto?",
+  "historial": [
+    {"role": "user", "parts": "¿Cuántos días de vacaciones hay?"},
+    {"role": "model", "parts": "Hay 25 días laborables."}
+  ]
 }
 ```
 
-**¡Felicidades!** Acabas de lograr integrar el cerebro generativo de un LLM comercial por detrás de tu propia API REST segura y validada. Este es el primer bloque arquitectónico y el más crítico de cómo se construyen el 90% de las startups de Inteligencia Artificial que verás ahí fuera.
+### Ejemplo frontend (HTML)
+Para no tener que montar CORS, vamos a servir el frontend directamente desde FastAPI, añadimos lo siguiente:
+```python
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/")
+def home():
+    return FileResponse("static/index.html")
+```
+
+Y ya podemos cargar este HTML dentro de un directorio `/static`
+```html
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat Stateless (Historial en Memoria)</title>
+  <style>
+    body { font-family: sans-serif; max-width: 760px; margin: 24px auto; padding: 0 12px; }
+    #log { border: 1px solid #ccc; border-radius: 8px; padding: 12px; min-height: 220px; white-space: pre-wrap; }
+    .row { display: flex; gap: 8px; margin-top: 12px; }
+    input { flex: 1; padding: 10px; }
+    button { padding: 10px 14px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Chat con historial en memoria</h1>
+  <p>Este ejemplo guarda localmente el historial y lo manda al backend en cada petición.</p>
+
+  <div id="log"></div>
+
+  <div class="row">
+    <input id="pregunta" type="text" placeholder="Escribe tu pregunta..." />
+    <button id="enviar">Enviar</button>
+    <button id="limpiar" type="button">Limpiar historial</button>
+  </div>
+
+  <script>
+    // Historial en memoria (se pierde al recargar)
+    let historial = [];
+
+    const log = document.getElementById("log");
+    const input = document.getElementById("pregunta");
+    const btnEnviar = document.getElementById("enviar");
+    const btnLimpiar = document.getElementById("limpiar");
+
+    function pintarLog() {
+      log.textContent = historial.join("\n");
+    }
+
+    async function preguntar() {
+      const pregunta = input.value.trim();
+      if (!pregunta) return;
+
+      // 1) Añadimos turno de usuario al historial local
+      historial.push(`USER: ${pregunta}`);
+      pintarLog();
+      input.value = "";
+      input.focus();
+
+      try {
+        // 2) Enviamos pregunta + historial completo al backend stateless
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pregunta: pregunta,
+            historial: historial
+          })
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`HTTP ${res.status} - ${errText}`);
+        }
+
+        const data = await res.json();
+
+        // 3) Añadimos respuesta del asistente al historial local
+        historial.push(`ASSISTANT: ${data.respuesta}`);
+        pintarLog();
+      } catch (error) {
+        historial.push(`ASSISTANT: Error al consultar API (${error.message})`);
+        pintarLog();
+      }
+    }
+
+    btnEnviar.addEventListener("click", preguntar);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") preguntar();
+    });
+
+    btnLimpiar.addEventListener("click", () => {
+      historial = [];
+      pintarLog();
+      input.focus();
+    });
+
+    pintarLog();
+  </script>
+</body>
+</html>
+```
+
+En caso de querer usar otro frontend, hay que configurar CORS:
+```python
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+### Actividad: Fallback
+
+Hemos utilizado un modelo específico de Gemini, pero, como vimos en las prácticas anteriores, hacer fallback a otros modelos es bastante importante. Puedes intentar modificar el código para aplicar fallback, incluso si falla, pasar a modelos de Hugging Face (usando pipeline, sin necesidad de cambiar el prompt de entrada).
