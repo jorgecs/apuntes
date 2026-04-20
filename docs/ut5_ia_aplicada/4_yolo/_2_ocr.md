@@ -117,3 +117,9 @@ pip install pytesseract opencv-python
 ```bash
 pip install easyocr torch
 ```
+
+## Ejercicios prácticos
+
+[![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jorgecs/apuntes/blob/main/docs/ut5_ia_aplicada/4_yolo/notebooks/OCR.ipynb)
+
+**IMPORTANTE**: Guarda una copia en Drive antes de empezar (Archivo → Guardar una copia)

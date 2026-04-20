@@ -184,6 +184,6 @@ Muchos modelos en Hugging Face ya vienen cuantizados, listos para usar:
 | Modelo grande en GPU pequeña | `load_in_8bit=True` o `load_in_4bit=True` |
 | Modelo muy grande en CPU | Buscar versiones GGUF cuantizadas |
 
-## Ejercicios prácticos - Ejercicio 7
+## Ejercicios prácticos - Ejercicio 8
 
 [![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jorgecs/apuntes/blob/main/docs/ut5_ia_aplicada/2_huggingface/notebooks/RAG.ipynb)

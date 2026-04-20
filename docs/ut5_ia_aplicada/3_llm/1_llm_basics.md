@@ -49,6 +49,44 @@ Luego repite con: *"El cielo es de color azul..."* y predice la siguiente, y as�
 - Traducir entre idiomas
 - Todo con el *mismo* modelo
 
+### Predecir tokens acaba en capacidades complejas
+
+Que el objetivo de entrenamiento sea simple **no** significa que el modelo simplemente suelte palabras sin sentido.
+
+**1) Aprenden representaciones muy complejas**
+- Para predecir bien el siguiente token, el modelo acaba aprendiendo gramática, semántica, relaciones lógicas e incluso cierto razonamiento emergente.
+
+**2) No solo repiten palabras**
+- Internamente construyen representaciones del contexto usando mecanismos como la **atención**.
+- Esto les permite manejar dependencias largas y relaciones complejas entre partes del texto.
+
+**3) Se adaptan a múltiples tareas**
+- Gracias a técnicas como **fine-tuning** o **RLHF** (aprendizaje por refuerzo con feedback humano), un mismo modelo puede especializarse mejor en:
+  - Responder preguntas
+  - Programar
+  - Traducir
+  - Razonar (hasta cierto punto)
+
+#### Importante: no funciona por Fill-Mask
+
+El uso de `[MASK]` es propio de modelos tipo **BERT**, que usan **Masked Language Modeling (MLM)**:
+- Se ocultan palabras en una frase.
+- El modelo intenta predecirlas.
+- Ejemplo: `"El gato está en el [MASK]"` -> `"tejado"`.
+
+Esto es distinto del objetivo típico de los LLM generativos.
+
+En LLMs tipo **GPT**, la predicción es **secuencial (autoregresiva)**:
+- Ven el texto anterior.
+- Predicen el siguiente token.
+- Ejemplo: `"El gato está en el..."` -> predice `"tejado"`.
+- Luego: `"El gato está en el tejado..."` -> predice lo siguiente, y así sucesivamente.
+
+Entonces, ¿por qué parecen tan "inteligentes"? No es por `[MASK]`, sino por la combinación de:
+- **Arquitectura Transformer + attention**: relacionan palabras entre sí y capturan contexto complejo.
+- **Escala**: muchísimos datos y miles de millones de parámetros.
+- **Objetivo + datos -> comportamiento emergente**: para predecir bien, se ven forzados a aprender estructuras profundas de lenguaje, lógica y estilo.
+
 ### Diferencias clave con pipelines clásicos
 
 | Aspecto | Pipeline Clásico | LLM |
@@ -61,13 +99,11 @@ Luego repite con: *"El cielo es de color azul..."* y predice la siguiente, y as�
 
 ---
 
----
-
 ## Tres pilares para controlar LLMs en producción
 
-Ahora bien, ¿cómo trabajamos con un modelo tan poderoso y "impredecible"? Aquí están los tres conceptos que dominaréis hoy:
+Ahora bien, ¿cómo trabajamos con un modelo tan poderoso y "impredecible"? Aquí están los tres conceptos más importantes:
 
-### 1. PROMPTING
+### 1. Prompting
 
 **El prompt es el 80% del resultado.** La calidad de lo que le pides determina directamente la calidad de lo que recibes.
 
@@ -90,7 +126,7 @@ Cuanto más específico y claro eres con el modelo, mejor resultado obtienes. La
 
 ---
 
-### 2. TEMPERATURE
+### 2. Temperatura
 
 La distribución de probabilidades que vimos antes se puede "manipular" con un parámetro llamado **temperature**.
 
@@ -128,7 +164,7 @@ Creatividad → Temperature alta
 
 ---
 
-### 3. ALUCINACIONES
+### 3. Alucinaciones
 
 **Definición:** El LLM genera información falsa, inventada, pero la presenta como si fuera cierta.
 
@@ -158,6 +194,73 @@ El modelo SÍ sabe que está inventando (en teoría), pero está obligado a gene
 | **Vías de escape explícitas** | Instrucción: *"Si no sabes, responde: 'No tengo información'"* | Siempre (es una buena práctica) |
 | **Temperature baja** | Reduce su "creatividad" y lo mantiene en caminos seguros | Información crítica o técnica |
 | **Validación externa** | Verifica respuestas contra APIs, DBs o fuentes confiables | En producción, siempre |
+
+---
+
+## Gemini (SDK oficial)
+
+En práctica trabajaremos con Gemini usando el SDK `google-genai`. Esta es la base mínima que necesitas:
+
+### 1. Crear un cliente
+
+```python
+from google import genai
+from google.colab import userdata
+
+GOOGLE_API_KEY = userdata.get("GEMINI_API_KEY")
+client = genai.Client(api_key=GOOGLE_API_KEY)
+
+MODEL_ID = "models/gemini-3.1-flash-lite-preview"
+```
+
+### 2. Enviar un mensaje y mostrar respuesta
+
+```python
+prompt = "Explica qué es un LLM en 3 frases"
+
+response = client.models.generate_content(
+  model=MODEL_ID,
+  contents=prompt,
+)
+
+print(response.text)
+```
+
+### 3. Abrir un chat y enviar mensajes
+
+Con `generate_content()` cada petición es aislada. Si quieres memoria conversacional, usa `chat`:
+
+```python
+chat = client.chats.create(model=MODEL_ID)
+
+resp_1 = chat.send_message("Hola, me llamo Ana y me gusta Python.")
+print(resp_1.text)
+
+resp_2 = chat.send_message("¿Cómo me llamo y qué lenguaje me gusta?")
+print(resp_2.text)
+```
+
+### 4. Añadir configuración: temperatura y contexto
+
+```python
+from google.genai import types
+
+config_generacion = types.GenerateContentConfig(
+  temperature=0.2,
+  max_output_tokens=300,
+)
+
+contexto = "Tu audiencia son estudiantes de secundaria. Usa lenguaje claro y ejemplos cotidianos."
+pregunta = "¿Qué diferencia hay entre IA tradicional y LLM?"
+
+response = client.models.generate_content(
+  model=MODEL_ID,
+  contents=f"Contexto:\n{contexto}\n\nPregunta:\n{pregunta}",
+  config=config_generacion,
+)
+
+print(response.text)
+```
 
 ## Ejercicios prácticos
 

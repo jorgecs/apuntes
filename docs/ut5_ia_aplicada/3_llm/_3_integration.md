@@ -131,43 +131,30 @@ Primero creamos un fichero `politicas_empresa.md` con el siguiente contenido:
 - La oficina cierra a las 20:00 y requiere tarjeta magnética para el acceso de fin de semana.
 ```
 
-El código para leer el fichero y utilizarlo en el chat quedaría de la siguiente forma:
+El código para leer el fichero y utilizarlo quedaría de la siguiente forma:
 
 ```python
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+import os
+
+with open("politicas_empresa.md", "r", encoding="utf-8") as f:
+    documento = f.read()
+```
+
+Una vez hemos cargado el fichero, es necesario inicializar Gemini usando la API Key
+```python
 from google import genai
 from google.genai import types
-from dotenv import load_dotenv
-import os
 
 MODEL_ID = "models/gemini-2.5-flash"
 
-# Carga variables desde .env
-load_dotenv()
-
 api_key = os.environ.get("GEMINI_API_KEY")
-if not api_key:
-    raise RuntimeError("Falta GEMINI_API_KEY en el archivo .env")
 
 client = genai.Client(api_key=api_key)
-app = FastAPI(title="API LLM con RAG", version="1.1.0")
+```
 
-# Leemos el documento local (simulando la extracción/RAG)
-with open("politicas_empresa.md", "r", encoding="utf-8") as f:
-    documento = f.read()
+Una posible opción ahora es utilizar un chat, podemos darle de forma simple este contexto.
 
-# Definimos reglas e inyectamos el documento como contexto del chat
-instrucciones_sistema = f"""
-Eres el asistente virtual de RRHH de EmpresaFalsa123.
-Responde de forma concisa y amigable basándote EXCLUSIVAMENTE en el siguiente documento.
-Si el usuario pregunta por algo que no aparezca en las políticas, no inventes.
-
---- INICIO DEL DOCUMENTO OFICIAL ---
-{documento}
---- FIN DEL DOCUMENTO OFICIAL ---
-"""
-
+```python
 config = types.GenerateContentConfig(
     temperature=0,
     system_instruction=instrucciones_sistema,
@@ -177,17 +164,32 @@ chat_model = client.chats.create(
     model=MODEL_ID,
     config=config,
 )
+```
 
-# Vamos a usar Pydantic para gestionar los tipos de las entradas
+Ahora ya podemos cambiar la lógica del endpoint para enviar un mensaje al chat, pero antes vamos a intentar gestionar los datos de entrada y salida, ya que Python no es tipado, pero para una API robusta, es muy importante que se conozca cuáles son las entradas y salidas de cada endpoint, lovamos a hacer con Pydantic.
+
+```python
+from pydantic import BaseModel
+```
+
+Crearemos un modelo para la entrada de la API (un string con la pregunta) y la salida (un string con la respuesta).
+
+```python
 class ChatRequest(BaseModel):
     pregunta: str
 
 
 class ChatResponse(BaseModel):
     respuesta: str
+```
 
-
+Ahora ya podemos definir el endpoint indicando el tipo de entrada
+```python
 @app.post("/api/chat", response_model=ChatResponse)
+```
+
+La lógica de este endpoint será un método que envía la pregunta al chat de Gemini y devuelve la respuesta (tipo ChatResponse)
+```python
 def chat_con_contexto(request: ChatRequest):
     try:
         respuesta = chat_model.send_message(request.pregunta)
@@ -210,58 +212,70 @@ Importante:
 2. El chat mantiene historial en memoria del servidor, por eso puede responder repreguntas.
 3. En producción multiusuario, se separan chats por sesión/usuario (no un único `chat_model` global).
 
-### 3.3 Simulando chats por usuario
+### 3.3 Gestión stateless de la aplicación
 Si usamos la versión anterior y probamos en dos pestañas diferentes, te responderá teniendo en cuenta lo que se le ha dicho. Esto NO es lo ideal, vamos a hacer un cambio para que sea `stateless` (el frontend envía el historial y el backend lo recibe)
 
+Para ello, la entrada al endpoint no tendrá únicamente la pregunta, deberá incluir el historial (lista de strings). Para ello tenemos que cambiar la definición de la entrada.
+
 ```python
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from google import genai
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-api_key = os.getenv("GEMINI_API_KEY")
-if not api_key:
-    raise RuntimeError("Falta GEMINI_API_KEY en .env")
-
-client = genai.Client(api_key=api_key)
-MODEL_ID = "models/gemini-2.5-flash"
-app = FastAPI()
-
-with open("politicas_empresa.md", "r", encoding="utf-8") as f:
-    documento = f.read()
-
 class ChatRequest(BaseModel):
     pregunta: str
-    historial: list[str] = []   # Ej: ["USER: ...", "ASSISTANT: ..."]
+    historial: list[str] = []
+```
 
-class ChatResponse(BaseModel):
-    respuesta: str    
+¿Vale la pena seguir utilizando chats? Si lo pensamos, realmente no, tendríamos que CREAR y GUARDAR cada chat de cada usuario, una mejor aproximación es que cada mensaje a Gemini tenga su propio contexto, por tanto eliminamos la creación del chat. 
+Además, usaremos prompts extendidos con el contexto y el historial. 
 
-@app.post("/api/chat")
-def chat_stateless(req: ChatRequest):
-    try:
-        historial_txt = "\n".join(req.historial[-6:])  # solo últimas preguntas
+Al modificar ChatRequest, ahora el endpoint espera la pregunta y el historial.
 
-        prompt = f"""
-Responde SOLO con este documento:
-{documento}
+```python
+def chat_con_contexto(request: ChatRequest):
+```
 
-Historial:
-{historial_txt}
+De aquí podemos obtener la pregunta y el historial
+```python
+pregunta = request.pregunta
+historial = request.historial
+```
 
-Pregunta actual:
-{req.pregunta}
+Ahora podemos crear el prompt extendido con el contexto y el historial recibidos del frontend.
+
+```python
+prompt = f"""
+Eres un asistente que responde preguntas usando SOLO información del documento.
+
+REGLAS IMPORTANTES:
+- No copies el documento completo.
+- No repitas texto largo del documento.
+- Extrae SOLO la información necesaria.
+- Si la respuesta no está en el documento, di: "No aparece en el documento".
+- Responde de forma breve y directa.
+
+DOCUMENTO:
+\"\"\"{documento}\"\"\"
+
+HISTORIAL:
+{historial}
+
+PREGUNTA:
+{pregunta}
+
+RESPUESTA:
 """
+```
 
-        resp = client.models.generate_content( # Ya no usamos un chat
-            model=MODEL_ID,
-            contents=prompt
-        )
-        return {"respuesta": resp.text}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+Y finalmente enviarlo a Gemini
+```python
+resp = client.models.generate_content(
+  model=MODEL_ID,
+  contents=prompt
+)
+```        
+
+Y devolver el resultado
+
+```python
+return {"respuesta": resp.text}
 ```
 
 Ejemplo de request desde frontend:

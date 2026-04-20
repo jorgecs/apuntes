@@ -22,15 +22,36 @@ Ejemplo:
 
 Si quieres actuar sobre el mundo (contar, seguir, evitar colisiones, vigilar zonas), necesitas ubicación, no solo etiqueta.
 
-### Qué es una bounding box
+### Qué es una Bounding Box
 
-Una **bounding box** es un rectángulo que delimita un objeto.
+Una **bounding box** es un rectángulo que delimita un objeto. No es un dibujo, sino una **lista de números**.
 
 YOLO suele devolver, por cada objeto:
 
-- `class_id`: clase predicha (persona, coche, etc.).
-- `confidence`: probabilidad/confianza.
-- `bbox`: coordenadas (`x1, y1, x2, y2`) o formato centro-ancho-alto (`x, y, w, h`).
+- `class_id`: Qué objeto es (0: persona, 1: coche...).
+- `confidence`: Qué seguridad tiene el modelo (de 0.0 a 1.0).
+- `bbox`: Las coordenadas del rectángulo. El formato más común es `[x1, y1, x2, y2]`:
+    - `(x1, y1)`: Esquina superior izquierda.
+    - `(x2, y2)`: Esquina inferior derecha.
+
+Normalmente, el punto `(0,0)` está en la **esquina superior izquierda**. A medida que `y` aumenta, bajamos en la imagen.
+
+YOLO puede trabajar con píxeles reales o con valores **normalizados** (de 0.0 a 1.0), lo que permite que el modelo funcione igual de bien independientemente del tamaño de la imagen.
+
+### El Grid en YOLO
+
+YOLO no escanea la imagen trozo a trozo:
+
+1. Divide la imagen en una **rejilla (grid)** (ej. 13x13 o 19x19).
+2. Cada celda de esa rejilla es "responsable" de predecir si hay un objeto cuyo **centro** caiga dentro de ella.
+3. Si una celda detecta algo, predice la caja, la confianza y qué objeto es.
+
+Esto permite procesar todo en una sola pasada, lo que permite que funcione en **tiempo real**.
+
+### ¿Qué sabe detectar? (Dataset COCO)
+
+Por defecto, los modelos que usamos suelen estar pre-entrenados con el dataset **COCO** (*Common Objects in Context*), que incluye **80 categorías** comunes (personas, coches, señales de tráfico, animales, muebles...).
+
 
 Parámetros que incluye YOLO:
 
@@ -42,27 +63,39 @@ Parámetros que incluye YOLO:
 
 ### Demostración con imagen
 
-Este ejemplo carga un modelo YOLO preentrenado y detecta objetos en una imagen estática.
+Cuando ejecutamos el modelo, obtenemos una lista de detecciones. Podemos usar `.plot()` para verlo rápido, o inspeccionar los números para hacer lógica.
 
 ```python
 from ultralytics import YOLO
 
-# Modelo ligero para demo rápida en clase
-model = YOLO("yolov8n.pt")
+# 1. Cargamos el modelo (se descarga automáticamente)
+model = YOLO("yolov8n.pt") 
 
-# Inferencia sobre una imagen
-results = model("imagen_aula.jpg", conf=0.35, iou=0.5)
+# 2. Hacemos la predicción sobre una imagen
+# Usamos [0] porque predict devuelve una lista, y solo queremos el primer resultado
+resultado = model.predict("clase.jpg", conf=0.4)[0]
 
-# Mostrar y guardar la imagen anotada con bounding boxes
-results[0].show()
-results[0].save(filename="salida_imagen_boxes.jpg")
+# 3. OPCIÓN A: Ver el resultado rápido (abre una ventana propia)
+resultado.show() 
 
-# Inspección de detecciones por consola
-for box in results[0].boxes:
-    cls_id = int(box.cls[0])
-    conf = float(box.conf[0])
+# 4. OPCIÓN B (más importante): Acceder a los datos para lógica (conteo, etc.)
+
+#Obtenemos cuántas detecciones ha habido
+detecciones = resultado.boxes
+print(f"Se han detectado {len(detecciones)} objetos.")
+
+for box in detecciones: # Puede haber más de una caja!
+
+    # Con .xyxy obtenemos las coordenadas en formato [x1, y1, x2, y2]
     x1, y1, x2, y2 = box.xyxy[0].tolist()
-    print(f"clase={cls_id} conf={conf:.2f} bbox=({x1:.1f},{y1:.1f},{x2:.1f},{y2:.1f})")
+    # .conf nos da la confianza del modelo
+    conf = box.conf[0]
+    # .cls nos da el identificador de la clase
+    cls = int(box.cls[0])
+    # .names es un diccionario que mapea ids a nombres
+    label = model.names[cls]
+
+    print(f"Detectado {label} con confianza {conf:.2f}")
 ```
 
 Una imagen puede tener **múltiples detecciones**.
@@ -71,46 +104,88 @@ Cambiar `conf` altera cantidad/calidad de cajas.
 
 ### Mismo concepto con vídeo
 
-Aquí no cambia la idea, solo se repite frame a frame.
+Aquí no cambia la idea, solo se repite frame a frame. Aquí usamos OpenCV, es una librería para visualización y gestión de las imágenes (nos permitirá abrir la imagen y mostrar la caja en las coordenadas que YOLO ha detectado).
 
 ```python
 import cv2
 from ultralytics import YOLO
 
+# 1. Cargamos el modelo
 model = YOLO("yolov8n.pt")
 
-cap = cv2.VideoCapture("video_calle.mp4")
+# 2. Abrimos el vídeo
+cap = cv2.VideoCapture("video.mp4")
 
 while cap.isOpened():
+    # Leemos el frame
     ok, frame = cap.read()
     if not ok:
         break
 
-    # Inferencia sobre el frame actual
-    result = model(frame, conf=0.35, iou=0.5, verbose=False)[0]
+    # 3. Predicción sobre el frame actual (igual que en imagen)
+    resultado = model.predict(frame, conf=0.35)[0]
 
-    # Dibuja bounding boxes + etiquetas directamente en el frame
-    frame_annotated = result.plot()
+    # 4. Visualización con OpenCV
+    # .plot() dibuja las cajas y nos devuelve la imagen (numpy array)
+    frame_dibujado = resultado.plot()
 
-    cv2.imshow("YOLO deteccion en video", frame_annotated)
+    # También podemos acceder a los datos como antes
+    detecciones = resultado.boxes
+    
+    for box in detecciones:
+        x1, y1, x2, y2 = box.xyxy[0].tolist()
+        conf = box.conf[0]
+        cls = int(box.cls[0])
+        label = model.names[cls]
+        print(f"Detectado {label} con confianza {conf:.2f}")
 
-    # Salir con tecla q
+        # Es exactamente igual que en imagen pero iterando por cada frame, pero podemos mostrar esos frames
+    
+        # OpenCV permite dibujar las cajas, podemos hacer un rectángulo indicando la posición (x1, y1, x2, y2), el color (RGB) y el grosor de la línea
+        cv2.rectangle(frame_dibujado, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
+
+        # También podemos añadir texto, en este caso la etiqueta, la posición, la fuente, el tamaño, color y grosor del texto
+        cv2.putText(frame_dibujado, model.names[cls], (int(x1), int(y1)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+
+    # Mostramos el frame con OpenCV
+    cv2.imshow("Detecciones en tiempo real", frame_dibujado)
+
+    # Dejar de mostrar el frame si pulsamos 'q'
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
 
+# Cerramos el vídeo y destruimos todas las ventanas
 cap.release()
 cv2.destroyAllWindows()
 ```
 
-Qué diferencia hay:
+### Modelos de la comunidad (Hugging Face)
 
-- Detección en vídeo = detección en imagen + tiempo.
-- La latencia depende del modelo y del hardware.
-- Modelos "nano" son buenos.
+Aunque Ultralytics nos da modelos oficiales, la comunidad entrena modelos para tareas específicas (detectar solo caras, detectar matrículas, etc.).
 
-## Requisitos mínimos para ejecutar los ejemplos
+Estos modelos se descargan usando `hf_hub_download`
 
-```bash
-pip install ultralytics opencv-python
+```python
+from huggingface_hub import hf_hub_download
+
+# ruta en Hugging Face: "usuario/nombre-modelo"
+model_path = hf_hub_download(
+    repo_id="nombre-usuario/nombre-modelo",
+    filename="yolov8m.pt"
+)
+
+model = YOLO(model_path)
 ```
-Si no hay GPU disponible, los ejemplos también funcionan con CPU, pero más lentos.
+
+## Ejercicios prácticos
+
+- **Ejercicio 1: Clasificación de tráfico**. Identifica qué tipos de vehículos hay en una imagen y cuántos de cada clase.
+- **Ejercicio 2: El vigilante del aula**. Usa un vídeo y cuenta cuál es el máximo de personas que han aparecido simultáneamente en pantalla.
+- **Ejercicio 3 (AVANZADO): Conteo Real con Tracking**. En el ejercicio 2, si alguien sale y entra, ¿lo contamos como uno nuevo? Usa `model.track()` para asignar IDs únicos y contar cuántas personas distintas han pasado por el aula en total.
+
+> [!TIP]
+> Para el Ejercicio 3, necesitarás guardar los IDs en un `set()` de Python. Como los sets no permiten duplicados, el tamaño del set al final del vídeo será el número total de personas detectadas.
+
+[![Abrir en Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jorgecs/apuntes/blob/main/docs/ut5_ia_aplicada/4_yolo/notebooks/YOLO.ipynb)
+
+**IMPORTANTE**: Guarda una copia en Drive antes de empezar (Archivo → Guardar una copia)
