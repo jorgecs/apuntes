@@ -101,7 +101,7 @@ Entonces, ¿por qué parecen tan "inteligentes"? No es por `[MASK]`, sino por la
 
 ## Tres pilares para controlar LLMs en producción
 
-Ahora bien, ¿cómo trabajamos con un modelo tan poderoso y "impredecible"? Aquí están los tres conceptos más importantes:
+Ahora bien, ¿cómo trabajamos con este tipo de modelos? Aquí están los tres conceptos más importantes:
 
 ### 1. Prompting
 
@@ -111,7 +111,7 @@ Ahora bien, ¿cómo trabajamos con un modelo tan poderoso y "impredecible"? Aqu�
 ```
 "Dime algo sobre la IA"
 ```
-→ Respuesta confusa, genérica y useless.
+→ Respuesta confusa, genérica.
 
 **Buen prompt (estructura RTCF):**
 ```
@@ -120,9 +120,9 @@ Ahora bien, ¿cómo trabajamos con un modelo tan poderoso y "impredecible"? Aqu�
 [CONTEXTO] Tu audiencia son alumnos de secundaria (14-16 años).
 [FORMATO] Usa una analogía con algo cotidiano. Devuelve en Markdown.
 ```
-→ Respuesta exacta, adaptada, memorable.
+→ Respuesta exacta, adaptada.
 
-Cuanto más específico y claro eres con el modelo, mejor resultado obtienes. La especificidad es tu aliada.
+Cuanto más específico y claro eres con el modelo, mejor resultado obtienes
 
 ---
 
@@ -149,18 +149,12 @@ generation_config = {
 
 **Temperature ALTA (0.7 - 1.0+):**
 - El modelo escoge palabras **menos probables**, se atreve a "arriesgar"
-- **Resultado:** Respuestas creativas, variadas, sorpresas (a veces peligrosas)
+- **Resultado:** Respuestas creativas, variadas, sorpresas
 - **Uso ideal:**
   - Escribir historias
   - Brainstorming de ideas
-  - Marketing copy
+  - Marketing
 - **Ejemplo:** Temperature = 1.0 → Podría elegir "elefante"
-
-**Regla práctica para tu carrera:**
-```
-Código, datos → Temperature baja
-Creatividad → Temperature alta
-```
 
 ---
 
@@ -170,7 +164,7 @@ Creatividad → Temperature alta
 
 #### ¿Por qué ocurren?
 
-El LLM **NO es una base de datos**. No busca en Google ni tiene acceso a internet por defecto. Es un **motor probabilístico puro**.
+El LLM **NO es una base de datos**. No busca en Google ni tiene acceso a internet por defecto. Es un **motor probabilístico**.
 
 Cuando le preguntas algo que no ha "visto" durante su entrenamiento:
 ```
