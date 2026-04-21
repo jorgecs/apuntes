@@ -39,7 +39,7 @@ Extraemos el texto relevante de nuestros archivos o bases de datos y lo pegamos 
 En un sistema RAG corporativo complejo (con miles de PDFs u hojas de cálculo), se utilizan Bases de Datos Vectoriales para buscar matemáticamente solo los 3 o 4 párrafos más relevantes a la pregunta, para no saturar al LLM.
 
 Sin embargo, gracias a modelos modernos como **Gemini 3.0**, tenemos ventanas de contexto enormes (hasta 1 o 2 millones de *tokens*, que equivalen a libros enteros). Aplicaremos un abordaje supereficiente llamado **"RAG Simplificado"** (o *Context Stuffing*):
-En lugar de trocear archivos y usar bases de datos vectoriales, **leeremos el archivo de texto entero mediante Python y lo inyectaremos de golpe en el prompt.**
+En lugar de trocear archivos y usar bases de datos vectoriales, **leeremos el archivo de texto entero y lo inyectaremos de golpe en el prompt.**
 
 ### Cómo es un Prompt con Contexto
 Para evitar que el modelo se confunda entre cuáles son tus instrucciones, cuál es la referencia y qué quiere el usuario, debemos ser extremadamente metódicos estructurando el *string*, como vimos, usando la estructura **RTCF**.
@@ -82,15 +82,13 @@ Todo esto se puede hacer con el SDK `google-genai` de Gemini:
 
 ### 1. Inyectar contexto
 
-Inyectando el contexto en `contents`:
+Inyectando el contexto inicial:
 
 ```python
-response = client.models.generate_content(
-	model=MODEL_ID,
-	contents=prompt_con_contexto,
+config_generacion = types.GenerateContentConfig(
+	system_instruction=instrucciones
 )
 
-print(response.text)
 ```
 
 ### 2. Forzar la salida con formato JSOM
