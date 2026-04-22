@@ -35,6 +35,24 @@ Dos enfoques que merece la pena explicar:
 	- suele rendir mejor en texto natural de escenas y casos difíciles,
 	- mayor coste computacional.
 
+### La importancia del Preprocesado
+
+En OCR (especialmente con Tesseract), la calidad de la imagen de entrada es crítica. El preprocesado busca convertir la imagen original en algo que el motor de OCR pueda entender fácilmente (generalmente texto negro sobre fondo blanco puro).
+
+Técnicas comunes:
+1.  **Escala de grises**: Elimina información de color innecesaria.
+2.  **Desenfoque (Blurring)**: Reduce el ruido digital y las imperfecciones del papel.
+3.  **Binarización (Thresholding)**: Convierte la imagen a blanco y negro puro. El método de **Otsu** es muy popular porque calcula automáticamente el umbral óptimo.
+
+```python
+# Ejemplo de preprocesado avanzado
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+# Eliminar ruido conservando bordes
+gray = cv2.bilateralFilter(gray, 9, 75, 75)
+# Binarización adaptativa para iluminación no uniforme
+th = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+```
+
 ### OCR con Tesseract (texto impreso)
 
 ```python
@@ -63,43 +81,55 @@ El preprocesado suele ser tan importante como el OCR.
 Ajustar `psm` cambia mucho el resultado (linea, bloque, palabra).
 Con imágenes limpias, Tesseract es muy competitivo.
 
-### OCR alternativo con EasyOCR (escena real y casos complejos)
+### OCR moderno con redes neuronales (PaddleOCR)
 
-Si el texto viene de fotos reales (carteles, etiquetas, capturas móviles), **EasyOCR** suele ser una buena alternativa para ejercicios prácticos.
+Si el texto viene de escenas reales (carteles, matrículas, imágenes con ruido o perspectiva), **PaddleOCR** es una alternativa muy robusta frente a Tesseract.
+
+A diferencia del OCR clásico, PaddleOCR no solo reconoce texto, sino que primero **detecta las regiones donde hay texto** y luego lo interpreta, lo que lo hace más fiable en entornos complejos.
 
 ```python
 import cv2
-import easyocr
+from paddleocr import PaddleOCR
 
 img = cv2.imread("cartel_tienda.jpg")
 
-# Idiomas del modelo (espanol + ingles)
-reader = easyocr.Reader(["es", "en"], gpu=False)
+# Inicialización del modelo
+ocr = PaddleOCR(use_angle_cls=True, lang="es")
 
-# Devuelve: bounding box, texto reconocido y confianza
-results = reader.readtext(img)
+# Ejecuta OCR sobre la imagen completa
+results = ocr.ocr(img, cls=True)
 
-for bbox, text, conf in results:
-	print(f"texto='{text}' conf={conf:.2f} bbox={bbox}")
+for line in results[0]:
+    bbox, (text, conf) = line
+    print(f"texto='{text}' conf={conf:.2f} bbox={bbox}")
 ```
 
-Oara texto impreso limpio, usa Tesseract,
-Para escenas reales o documentos difíciles, usa modelos tipo EasyOCR/PaddleOCR.
+### PaddleOCR vs Tesseract
+Tesseract:
+ - Funciona mejor en texto limpio y documentos estructurados.
+ - Necesita preprocesado para rendir bien.
+ - Muy útil para entender los fundamentos del OCR.
+
+PaddleOCR:
+ - Basado en deep learning.
+ - Detecta texto en escenas reales de forma automática.
+ - Mucho más robusto ante ruido, inclinación y fondos complejos.
+ - Menor dependencia del preprocesado.
 
 ### Pipeline típico en visión artificial
 
-1. YOLO detecta objetos o zonas relevantes,
-2. recorte de ROI,
-3. OCR extrae texto,
-4. una regla de negocio usa ese texto (registro, validación, alerta, analítica).
+1. YOLO detecta objetos o zonas relevantes.
+2. Recorte de ROI.
+3. OCR extrae texto.
+4. Una regla de negocio usa ese texto (registro, validación, alerta, analítica).
 
 ## Errores típicos de OCR
 
-- baja resolución,
-- movimiento/blur en vídeo,
-- mala iluminación,
-- perspectiva inclinada,
-- tipografías raras o escritura poco legible.
+- Baja resolución.
+- Movimiento/blur en vídeo.
+- Mala iluminación.
+- Perspectiva inclinada.
+- Tipografías raras o escritura poco legible.
 
 Por eso en proyectos reales casi siempre hay preprocesado: escalado, binarización, corrección de orientación y contraste.
 
@@ -115,7 +145,8 @@ pip install pytesseract opencv-python
 ### Opción EasyOCR
 
 ```bash
-pip install easyocr torch
+pip install "paddleocr<3" "paddlepaddle<3"
+pip install "paddlepaddle-gpu<3"
 ```
 
 ## Ejercicios prácticos

@@ -213,7 +213,7 @@ Importante:
 3. En producción multiusuario, se separan chats por sesión/usuario (no un único `chat_model` global).
 
 ### 3.3 Gestión stateless de la aplicación
-Si usamos la versión anterior y probamos en dos pestañas diferentes, te responderá teniendo en cuenta lo que se le ha dicho. Esto NO es lo ideal, vamos a hacer un cambio para que sea `stateless` (el frontend envía el historial y el backend lo recibe)
+Si usamos la versión anterior y probamos en dos pestañas diferentes, te responderá teniendo en cuenta lo que se le ha dicho. Esto NO es lo ideal, una forma de solucionarlo sería crear un chat en el endpoint, pero saturaríamos la memoria creando chats. Vamos a hacerlo de una forma más profesional, haciendo cambios para que sea `stateless` (el frontend envía el historial y el backend lo recibe)
 
 Para ello, la entrada al endpoint no tendrá únicamente la pregunta, deberá incluir el historial (lista de strings). Para ello tenemos que cambiar la definición de la entrada.
 
@@ -275,7 +275,7 @@ resp = client.models.generate_content(
 Y devolver el resultado
 
 ```python
-return {"respuesta": resp.text}
+return ChatResponse(respuesta=respuesta.text)
 ```
 
 Ejemplo de request desde frontend:
@@ -419,6 +419,20 @@ app.add_middleware(
 )
 ```
 
-### Actividad: Fallback
+### Actividad 1: Fallback
 
 Hemos utilizado un modelo específico de Gemini, pero, como vimos en las prácticas anteriores, hacer fallback a otros modelos es bastante importante. Puedes intentar modificar el código para aplicar fallback, incluso si falla, pasar a modelos de Hugging Face (usando pipeline, sin necesidad de cambiar el prompt de entrada).
+
+### Actividad 2: Fuentes
+
+Ya sabemos que en aplicaciones reales, no basta con que el modelo responda bien, necesitamos que responda en un formato que podamos procesar automáticamente desde el frontend. Modifica el endpoint para que Gemini devuelva siempre una respuesta en formato JSON con esta 
+estructura:
+```json
+{
+  "respuesta": string,
+  "fuente": string
+}
+```
+Donde:
+- "respuesta": respuesta corta a la pregunta
+- "fuente": sección del documento de donde se ha extraído la información (por ejemplo: "Vacaciones 2026")
