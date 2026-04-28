@@ -3,13 +3,13 @@ title: OCR
 sidebar_position: 2
 ---
 
-## OCR
+## OCR: Reconocimiento óptico de caracteres
 
-Tras YOLO, el flujo natural es:
+OCR (Optical Character Recognition) es la técnica que transforma texto de imágenes en texto editable y estructurado. El OCR suele integrarse después de un detector de regiones (por ejemplo YOLO), el flujo común es el siguiente: 
 
-1. detectar región de interés (matrícula, etiqueta, cartel, documento),
-2. recortar esa región,
-3. aplicar OCR para extraer texto.
+1. Detectar región de interés (matrícula, etiqueta, cartel, documento)
+2. Recortar esa región
+3. Aplicar OCR para extraer texto.
 
 ### Qué es OCR y cuándo usarlo
 
@@ -17,23 +17,29 @@ OCR (**Optical Character Recognition**) convierte texto en imágenes a texto edi
 
 Casos típicos:
 
-- lectura de matrículas,
-- extracción de datos en facturas,
-- digitalización de formularios,
-- lectura de cartelería en vídeo.
+- lectura de matrículas
+- extracción de datos en facturas
+- digitalización de formularios
+- lectura de elementos en vídeo
 
 ### OCR clásico vs OCR moderno
 
 Dos enfoques que merece la pena explicar:
 
 - **OCR clásico (Tesseract)**:
-	- rápido de poner en marcha,
-	- funciona muy bien con texto impreso y limpio,
-	- sensible a ruido, inclinación, baja resolución.
+	- rápido de poner en marcha
+	- funciona muy bien con texto impreso y limpio
+	- sensible a ruido, inclinación, baja resolución
 - **OCR moderno con redes neuronales (EasyOCR, PaddleOCR, etc.)**:
-	- más robusto en escenarios complejos,
-	- suele rendir mejor en texto natural de escenas y casos difíciles,
-	- mayor coste computacional.
+	- más robusto en escenarios complejos
+	- suele rendir mejor en texto natural de escenas y casos difíciles
+	- mayor coste computacional
+
+### Cómo funciona el OCR:
+- **Preprocesamiento:** Se mejora la imagen (corrección de inclinación...) para facilitar el reconocimiento.
+- **Detección de texto:** Se localizan las zonas donde hay texti y se separan en bloques o líneas, en enfoques clásicos se usan algoritmos heurísticos para buscar dónde está el texto y en enfoques modernos redes neuronales.
+- **Reconocimiento de caracteres:** En enfoques clásicos, se usan LSTM para leer secuencias de texto a partir de la imagen.Los enfoques modernos usan redes convolucionales para extraer características y LSTM o Transformers para interpretar el texto.
+- **Corrección:** Después del reconocimiento, los enfoques modernos usan un diccionario para corregir errores (c4sa -> casa)
 
 ### La importancia del Preprocesado
 
@@ -78,7 +84,20 @@ print(text)
 ```
 
 El preprocesado suele ser tan importante como el OCR.
-Ajustar `psm` cambia mucho el resultado (linea, bloque, palabra).
+
+El `oem` es el modelo de Tesseract:
+- 0: algoritmo clásico
+- 1: LSTM
+- 2: mezcla clásico + LSTM
+- 3: automático (elige el mejor)
+
+Ajustar `psm` cambia mucho el resultado (linea, bloque, palabra). Define cómo está estructurado el texto en la imagen:
+- 3: Página completa
+- 6: Bloque uniforme de texto
+- 7: Una sola línea
+- 8: Una sola palabra
+- 11: Texto sin estructura
+
 Con imágenes limpias, Tesseract es muy competitivo.
 
 ### OCR moderno con redes neuronales (PaddleOCR)
@@ -121,7 +140,7 @@ PaddleOCR:
 1. YOLO detecta objetos o zonas relevantes.
 2. Recorte de ROI.
 3. OCR extrae texto.
-4. Una regla de negocio usa ese texto (registro, validación, alerta, analítica).
+4. Una lógica de negocio usa ese texto (registro, validación, alerta, analítica).
 
 ## Errores típicos de OCR
 
@@ -133,20 +152,22 @@ PaddleOCR:
 
 Por eso en proyectos reales casi siempre hay preprocesado: escalado, binarización, corrección de orientación y contraste.
 
-## Instalación mínima
+## Instalación
 
-### Opción Tesseract
+### Tesseract
 
 ```bash
 sudo apt-get install tesseract-ocr tesseract-ocr-spa
 pip install pytesseract opencv-python
 ```
+Windows:
+https://github.com/UB-Mannheim/tesseract/wiki
 
-### Opción EasyOCR
+### PaddleOCR
 
 ```bash
 pip install "paddleocr<3" "paddlepaddle<3"
-pip install "paddlepaddle-gpu<3"
+pip install "paddlepaddle-gpu"
 ```
 
 ## Ejercicios prácticos

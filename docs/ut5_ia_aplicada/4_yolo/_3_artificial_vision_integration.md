@@ -33,12 +33,23 @@ pip install fastapi "fastapi[standard]" opencv-python pytesseract "paddleocr<3" 
 Para instalar Tesseract:
 
 - Windows: https://github.com/UB-Mannheim/tesseract/wiki
+Instala la ruta:
+```
+C:\Program Files\Tesseract-OCR
+```
+
+Si no se añade al PATH, en el código de Python usa esto:
+```python
+import pytesseract
+pytesseract.pytesseract.tesseract_cmd = r"C:\RutaDeLaDescarga\Tesseract-OCR\tesseract.exe"
+```
+
 - Linux:
 ```bash
 sudo apt-get install tesseract-ocr tesseract-ocr-spa
 ```
 
-OpenCV usa FFmpeg para leer vídeos. Si da error con vídeos `.mp4`, es probable que no lo tengas instalado:
+OpenCV puede usar FFmpeg para leer vídeos. Normalmente no es necesario instalarlo porque se incluye en la librería de Python, pero si diese error con vídeos `.mp4`, sería necesario instalarlo:
 
 Linux:
 ```bash
