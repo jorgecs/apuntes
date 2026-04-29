@@ -270,8 +270,8 @@ if not texto or not texto[0]:
 
 texto = extraer_texto(texto)
 
-if text:
-	plate_per_car[track_id].append(text)
+if texto:
+	plate_per_car[track_id].append(texto)
 ```
 
 Una vez procesados todos los frames, podemos cerrar el vídeo y borrar el fichero temporal
