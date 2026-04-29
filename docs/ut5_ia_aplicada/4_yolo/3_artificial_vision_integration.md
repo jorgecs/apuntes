@@ -33,7 +33,8 @@ pip install fastapi "fastapi[standard]" opencv-python pytesseract "paddleocr<3" 
 Para instalar Tesseract:
 
 - Windows: https://github.com/UB-Mannheim/tesseract/wiki
-Instala la ruta:
+
+Instala en la ruta (ruta por defecto):
 ```
 C:\Program Files\Tesseract-OCR
 ```
@@ -93,14 +94,11 @@ def extraer_texto(resultado_ocr):
 	return " ".join(textos)
 ```
 
-A continuación crearemos la API con su respectivo endpoint para procesar imágenes. Igual que con la API que ya creamos, vamos a utilizar Pydantic para definir el contrato de la API. En este caso, la respuesta será el texto extraído por OCR y la entrada será la imagen que se envíe al endpoint.
+A continuación crearemos la API con su respectivo endpoint para procesar imágenes. Igual que con la API que ya creamos, vamos a utilizar Pydantic para definir el contrato de la API. En este caso, la respuesta será el texto extraído por OCR y la entrada será la imagen que se envíe al endpoint, pero Pydantic no deja utilizar formato de imagen, así que la recibiremos en el endpoint directamente.
 
 ```python
 class OCRResponse(BaseModel):
 	texto: str
-
-class OCRRequest(BaseModel):
-	image: UploadFile = File(...)
 ```
 
 Ahora ya podemos crear el endpoint utilizando estos modelos y el OCR.
@@ -118,7 +116,6 @@ async def ocr_image(file: UploadFile = File(...)):
 
 	try:
 		image_bytes = await file.read()
-
 
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
@@ -149,7 +146,7 @@ return OCRResponse(texto=texto)
 fastapi dev
 ```
 
-Prueba en `http://127.0.0.1:8000/docs`:
+Prueba en `http://localhost:8000/docs`:
 
 1. Abre `POST /api/ocr`.
 2. Sube una imagen (`.jpg` o `.png`).
@@ -262,6 +259,8 @@ while True:
 ```
 
 Una vez ya tenemos el recorte, simplemente tenemos que aplicar el OCR sobre este y almacenar el resultado en `plate_per_car` para relacionar el coche con su matrícula. Añadiremos qué matrícula tiene en cada frame para después poder saber cuál es la que más se repite de cada coche.
+
+A esto se le llama OCR en streaming, en lugar de guardar recortes y hacer reconocimiento después, el OCR se ejecuta mientras se gestiona el vídeo. En webs este enfoque es útil para escalar la aplicación y poder usar vídeo en streaming y directos.
 
 ```python
 texto = ocr.ocr(roi)
@@ -417,3 +416,6 @@ app.add_middleware(
 ## Actividad 1: Preprocesado
 Normalmente es buena idea preprocesar las imágenes antes de procesarlas con OCR.
 Crea un método para preprocesar los recortes de matrículas antes de que se procesen con el motor OCR.
+
+## Actividad 2: Fallback OCR
+El OCR puede fallar, sobre todo si se utiliza uno ligero. Es buena idea crear un método de fallback para utilizar uno más potente si el motor principal devuelve poca precisión. Realiza un método para utilizar Tesseract como motor principa, si devuelve un resultado poco confiable, utilizar PaddleOCR en su lugar.
