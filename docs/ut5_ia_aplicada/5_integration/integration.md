@@ -4,6 +4,7 @@ sidebar_position: 1
 ---
 
 import proyectoFinal from "./img/Proyecto_PIA.pdf";
+import imagenes from "./img/imagenes.zip"
 
 A continuación se detalla el proyecto final de la UT5 IA Aplicada.
 {/* Visor del PDF incrustado */}
@@ -12,6 +13,14 @@ A continuación se detalla el proyecto final de la UT5 IA Aplicada.
 </object>
 {/* Botón de descarga alternativa */}
 <br/>
-<a href={proyectoFinal} download className="button button--primary">
-  Descargar PDF del Proyecto
-</a>
+<div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '16px' }}>
+
+  <a href={proyectoFinal} download className="button button--primary">
+    📄 Descargar PDF del proyecto
+  </a>
+
+  <a href={imagenes} download className="button button--secondary">
+    🖼️ Descargar imágenes de prueba
+  </a>
+
+</div>

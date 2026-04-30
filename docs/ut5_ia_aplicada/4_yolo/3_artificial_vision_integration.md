@@ -26,8 +26,33 @@ Pipeline típico en producción:
 
 ## 1. Instalación de dependencias
 
+Crea un venv (se recomienda Python 3.10 o Python 3.9 para evitar problemas):
+
+```python
+py -3.10 -m venv nombreVenv
+```
+
+Activa el venv:
+
+Windows:
+```bash
+./nombreVenv/Scripts/activate.ps1
+```
+
+Linux:
+```bash
+source nombreVenv/bin/activate
+```
+
+Instala las dependencias:
+
 ```bash
 pip install fastapi "fastapi[standard]" opencv-python pytesseract "paddleocr<3" "paddlepaddle<3" ultralytics huggingface_hub
+```
+
+Si ocurre algún problema con pytorch, desinstala las dependencias de torch, se instalarán luego al hacer `fastapi dev`:
+```bash
+pip uninstall torch torchvision torchaudio -y
 ```
 
 Para instalar Tesseract:
@@ -292,7 +317,70 @@ plate_per_car = {
 return YOLOResponse(plate_per_car=list(plate_per_car.values()))
 ```
 
-En producción, lo normal es ejecutar este endpoint en background (cola de tareas). Por eso se usa async
+Por tanto, el endpoint completo es el siguiente:
+```python
+@app.post("/api/video-detect-and-read", response_model=YOLOResponse)
+async def video_detect_and_read(file: UploadFile = File(...)):
+	
+	if file.content_type not in {"video/mp4", "video/quicktime", "video/x-msvideo"}:
+		raise HTTPException(status_code=400, detail="Formato de video no soportado")
+
+	video_bytes = await file.read()
+	fd, tmp_path = tempfile.mkstemp(suffix=".mp4")
+	
+	with os.fdopen(fd, 'wb') as tmp_file:
+		tmp_file.write(video_bytes)
+
+	cap = cv2.VideoCapture(tmp_path)
+	if not cap.isOpened():
+		raise HTTPException(status_code=400, detail="No se pudo abrir el video")
+
+	plate_per_car = {}
+
+	while True:
+		ok, frame = cap.read()
+		if not ok:
+			break
+
+		#Detectar matrículas
+		results = model.track(frame, persist=True)[0]
+
+		boxes = results.boxes
+
+		for box in boxes:
+			if box.id is None:
+				continue
+
+			track_id = int(box.id[0])
+
+			x1, y1, x2, y2 = box.xyxy[0].tolist()
+			
+			roi = frame[int(y1):int(y2), int(x1):int(x2)] #Recortar la bounding box
+
+			if track_id not in plate_per_car:
+				plate_per_car[track_id] = []
+
+			texto = ocr.ocr(roi) #OCR del recorte
+
+			if not texto or not texto[0]:
+				continue
+
+			texto = extraer_texto(texto)
+
+			if texto:
+				plate_per_car[track_id].append(texto)
+
+	cap.release()
+	os.remove(tmp_path)
+
+	plate_per_car = {
+    	k: Counter(v).most_common(1)[0][0]
+    	for k, v in plate_per_car.items()
+    	if v
+	}
+
+	return YOLOResponse(plate_per_car=list(plate_per_car.values()))
+```
 
 <a href={video2} download>
   📥 Descargar vídeo de prueba
@@ -301,7 +389,6 @@ En producción, lo normal es ejecutar este endpoint en background (cola de tarea
 <a href={video1} download>
   📥 Descargar otro vídeo de prueba
 </a>
-
 
 ## 5. Ejemplo frontend para subida de imagen
 
